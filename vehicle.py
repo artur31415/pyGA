@@ -1,3 +1,4 @@
+import pygame
 from utils import *
 from random import *
 
@@ -19,10 +20,11 @@ class Vehicle:
   
   health = 1
 
-  def __init__(self, x, y, _dna):
-    velocity = (randint(-1, 1), randint(-1, 1))
+  def __init__(self, _position, _dna):
+    self.position = _position
+    self.velocity = (randint(-1, 1), randint(-1, 1))
 
-    velocity = setMag(self.velocity, self.maxspeed)
+    self.velocity = setMag(self.velocity, self.maxspeed)
 
     if _dna != None:
       dna = []
@@ -80,143 +82,97 @@ class Vehicle:
   
   # Check against array of food or poison
   # index = 0 for food, index = 1 for poison
-  def eat(food_list, index):
+  def eat(self, food_list, index):
     # What's the closest?
     closest = None
     closestD = -1
 
     # Look at everything
-    for (int i = list.size() - 1 i >= 0 i--) 
-    {
+    for i in range(len(food_list), 0, -1):
+    
       # Calculate distance
-      d = PVector.dist(list.get(i), self.position)
+      d = vec_dist(food_list[i].position, self.position)
 
       # If it's within perception radius and closer than pervious
-      if (d < self.dna[2 + index] && d < closestD || closestD == -1) 
-      {
+      if d < self.dna[2 + index] and d < closestD or closestD == -1:
         closestD = d
         # Save it
-        closest = list.get(i)
+        closest = food_list[i]
 
         # If we're withing 5 pixels, eat it!
-        if (d < 5) 
-        {
-          list.remove(i)
+        if d < 5:
           # Add or subtract from health based on kind of food
-          self.health += nutrition[index]
-        }
-      }
-    }
+          self.health += food_list[i].nutrition
+          food_list.pop(i)
+        
 
     # If something was close
-    if (closest != None) 
-    {
+    if closest != None:
       # Seek
-      PVector seek = self.seek(closest, index)
+      seek = self.seek(closest, index)
       # Weight according to DNA
-      seek.mult(self.dna[index])
+      seek = vec_scalar_mult(seek, self.dna[index])
       # Limit
-      seek.limit(self.maxforce)
+      seek = clamp(seek, self.maxforce)
       self.applyForce(seek)
-    }
-  }
+    
 
   # Add force to acceleration
-  def applyForce(PVector force) 
-  {
-    self.acceleration.add(force)
-  }
-
+  def applyForce(self, force):
+    vec_add(self.acceleration, force)
+  
   # A method that calculates a steering force towards a target
   # STEER = DESIRED MINUS VELOCITY
-  PVector seek(PVector target, int index) 
-  {
-    PVector desired = PVector.sub(target, self.position) # A vector pointing from the location to the target
-    d = desired.mag()
+  def seek(self, target, index):
+    desired = vec_sub(target, self.position) # A vector pointing from the location to the target
+    d = mag(desired)
 
     # Scale to maximum speed
-    desired.setMag(self.maxspeed)
+    desired = clamp(desired, self.maxspeed)
 
     # Steering = Desired minus velocity
-    PVector steer = PVector.sub(desired, self.velocity)
+    steer = vec_sub(desired, self.velocity)
 
     # Not limiting here
     # steer.limit(self.maxforce)
 
     return steer
-  }
+  
 
 
-  def display() 
-  {  # Color based on health
-    color green = color(0, 255, 0)
-    color red = color(255, 0, 0)
-    color col = lerpColor(red, green, self.health)
+  def display(self, DISPLAY): 
+    # Color based on health
+    green = (0, 255, 0)
+    red = (255, 0, 0)
+    col = lerpColor(red, green, self.health, 0.0, 1.0)
 
     # Draw a triangle rotated in the direction of velocity
-    theta = self.velocity.heading() + PI / 2
+    theta = math.atan2(self.velocity[1], self.velocity[0]) + math.pi / 2
+    heading_pos = (self.r * math.cos(theta), self.r * math.sin(theta))
     #Push()
-    translate(self.position[0], self.position[1])
-    rotate(theta)
-
-    # Extra info
-    # if (debug.checked()) 
-    # {
-    #   noFill()
-
-    #   # Circle and line for food
-    #   stroke(0, 255, 0, 100)
-    #   ellipse(0, 0, self.dna[2] * 2)
-    #   line(0, 0, 0, -self.dna[0] * 25)
-
-    #   # Circle and line for poison
-    #   stroke(255, 0, 0, 100)
-    #   ellipse(0, 0, self.dna[3] * 2)
-    #   line(0, 0, 0, -self.dna[1] * 25)
-    # }
-
-    # Draw the vehicle itself
-    fill(col)
-    stroke(col)
-    beginShape()
-    vertex(0, -self.r * 2)
-    vertex(-self.r, self.r * 2)
-    vertex(self.r, self.r * 2)
-    endShape(CLOSE)
-    #pop()
-  }
+    pygame.draw.circle(DISPLAY, col, self.position, self.r)
+    pygame.draw.line(DISPLAY, (255, 255, 255), self.position, heading_pos, 3)
+  
 
   # A force to keep it on screen
-  def boundaries() 
-  {
+  def boundaries(self, screen_w, screen_h):
     # tolerable distance
-    int d = 10
-    PVector desired = None
+    d = 10
+    desired = None
 
-    if (self.position[0] < d) 
-    {
-      desired = new PVector(self.maxspeed, self.velocity[1])
-    } 
-    else if (self.position[0] > width - d) 
-    {
-      desired = new PVector(-self.maxspeed, self.velocity[1])
-    }
+    if self.position[0] < d:
+        desired = (self.maxspeed, self.velocity[1])
+    elif self.position[0] > screen_w - d:
+        desired = (-self.maxspeed, self.velocity[1])
 
-    if (self.position[1] < d) 
-    {
-      desired = new PVector(self.velocity[0], self.maxspeed)
-    } 
-    else if (self.position[1] > height - d) 
-    {
-      desired = new PVector(self.velocity[0], -self.maxspeed)
-    }
+    if self.position[1] < d:
+        desired = (self.velocity[0], self.maxspeed)
+    elif self.position[1] > screen_h - d:
+        desired = (self.velocity[0], -self.maxspeed)
 
-    if (desired != None) 
-    {
-      desired.setMag(self.maxspeed)
-      PVector steer = PVector.sub(desired, self.velocity)
-      steer.limit(self.maxforce)
+    if desired != None:
+      desired = clamp(desired, self.maxspeed)
+      steer = vec_sub(desired, self.velocity)
+      steer = clamp(steer, self.maxforce)
       self.applyForce(steer)
-    }
-  }
-}
+ 
