@@ -23,6 +23,7 @@ class Vehicle:
   alive_tick = 0
 
   def __init__(self, _position, _dna):
+    maxAtracRepul = 3
     self.position = _position
     self.velocity = (randint(-1, 1), randint(-1, 1))
 
@@ -37,16 +38,16 @@ class Vehicle:
             new_gene = 0
             if i < 2:
                 # Adjust steering force weights
-                new_gene = _dna[i] + randint(-2, 2) / 10.0
+                new_gene = _dna[i] + randFloat(-1, 1)
             else:
                 # Adjust perception radius
-                new_gene = _dna[i] + randint(-100, 100) / 10.0
+                new_gene = _dna[i] + randFloat(-1, 1)
             self.dna.append(new_gene)
           
           # Copy DNA
         self.dna.append(dna_gene)
     else:
-        maxAtracRepul = 3
+        
         # DNA
         # 0: Attraction/Repulsion to food
         # 1: Attraction/Repulsion to poison
@@ -80,7 +81,7 @@ class Vehicle:
   
     rnd = random()
 
-    if (rnd < 0.001):
+    if (rnd < 0.002):
       # Same location, same DNA
       return Vehicle((self.position[0], self.position[1]), self.dna)
     
@@ -94,10 +95,14 @@ class Vehicle:
     closestD = -1
     food_gene_index = 0
 
+    #WHY?
+    remaining_foods = [food_list[0]]
+
     # Look at everything
     for i in range(len(food_list) - 1, 0, -1):
       # Calculate distance
       d = vec_dist(food_list[i].position, self.position)
+      
 
       if food_list[i].nutrition < 0:
         food_gene_index = 1
@@ -108,11 +113,13 @@ class Vehicle:
         # Save it
         closest = food_list[i]
 
-        # If we're withing 5 pixels, eat it!
-        if d < 1.5 * self.r:
-          # Add or subtract from health based on kind of food
-          self.health += food_list[i].nutrition
-          food_list.pop(i)
+      # If we're withing 5 pixels, eat it!
+      if d < self.r:
+        # Add or subtract from health based on kind of food
+        self.health += food_list[i].nutrition
+        #food_list.pop(i)
+      else:
+        remaining_foods.append(food_list[i])
         
 
     # If something was close
@@ -124,6 +131,8 @@ class Vehicle:
       # Limit
       seek = clamp(seek, self.maxforce)
       self.applyForce(seek)
+    
+    return remaining_foods
     
 
   # Add force to acceleration
@@ -180,8 +189,8 @@ class Vehicle:
         desired = (self.velocity[0], -self.maxspeed)
 
     if desired != None:
-      desired = clamp(desired, self.maxspeed)
+      #desired = clamp(desired, self.maxspeed)
       steer = vec_sub(desired, self.velocity)
-      steer = clamp(steer, self.maxforce)
+      #steer = clamp(steer, self.maxforce)
       self.applyForce(steer)
  

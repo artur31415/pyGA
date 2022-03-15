@@ -33,8 +33,8 @@ foods = []
 poison_nutrition = -0.7
 food_nutrition = 0.1
 
-init_pop_count = 50
-init_food_count = 10
+init_pop_count = 20
+init_food_count = 20
 
 food_spawn_rate = 0.2
 poison_spawn_rate = 0.05
@@ -72,7 +72,7 @@ while running:
     ##################################################################
 
     for vehicle in vehicles:
-        vehicle.eat(foods)
+        foods = vehicle.eat(foods)
         
         # Check boundaries
         vehicle.boundaries(width, height)
@@ -119,10 +119,10 @@ while running:
         if oldest_vehicle == None or vehicle.alive_tick > oldest_vehicle.alive_tick:
             oldest_vehicle = vehicle
 
-    pygame.draw.circle(screen, (255, 255, 255), oldest_vehicle.position, 20, 2)
-    #pygame.draw.rect(screen, (255, 255, 255), (20, 20, 500, 30))
-    textsurface = myfont.render('pop = ' + str(len(vehicles)) + ' ; oldest is ' + str(oldest_vehicle.alive_tick) + ' ticks alive!', False, (255, 255, 255))
-    screen.blit(textsurface, (20, 20))
+    if oldest_vehicle != None:
+        pygame.draw.circle(screen, (255, 255, 255), oldest_vehicle.position, 20, 2)
+        textsurface = myfont.render('pop = ' + str(len(vehicles)) + ' ; oldest is ' + str(oldest_vehicle.alive_tick) + ' ticks alive!', False, (255, 255, 255))
+        screen.blit(textsurface, (20, 20))
     ##################################################################
     # Flip the display
     ##################################################################
