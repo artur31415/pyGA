@@ -6,6 +6,9 @@ def mag(vec):
 
 def setMag(vec, newMag):
     mag = math.sqrt((vec[0] * vec[0] + vec[1] * vec[1]))
+    if mag == 0:
+        return vec
+
     f = newMag / mag
     return (vec[0] * f, vec[1] * f)
 
@@ -37,4 +40,6 @@ def map(value, istart, istop, ostart, ostop):
     return ostart + (ostop - ostart) * ((value - istart) / (istop - istart))
 
 def lerpColor(color1, color2, value, min_value, max_value):
+    if value > max_value:
+        value = max_value
     return (map(value, min_value, max_value, color1[0], color2[0]), map(value, min_value, max_value, color1[1], color2[1]), map(value, min_value, max_value, color1[2], color2[2]))

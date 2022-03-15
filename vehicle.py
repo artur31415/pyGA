@@ -11,7 +11,7 @@ class Vehicle:
 
   dna = []
 
-  r = 3
+  r = 10
   maxforce = 0.5
   maxspeed = 3
 
@@ -20,6 +20,8 @@ class Vehicle:
   
   health = 1
 
+  alive_tick = 0
+
   def __init__(self, _position, _dna):
     self.position = _position
     self.velocity = (randint(-1, 1), randint(-1, 1))
@@ -27,20 +29,22 @@ class Vehicle:
     self.velocity = setMag(self.velocity, self.maxspeed)
 
     if _dna != None:
-      dna = []
+      self.dna = []
       
       for i in range(len(_dna)):
         dna_gene = _dna[i]
         if randint(0, 1) < self.mutationRate:
+            new_gene = 0
             if i < 2:
                 # Adjust steering force weights
-                dna[i] = _dna[i] + randint(-2, 2) / 10.0
+                new_gene = _dna[i] + randint(-2, 2) / 10.0
             else:
                 # Adjust perception radius
-                dna[i] = _dna[i] + randint(-100, 100) / 10.0
+                new_gene = _dna[i] + randint(-100, 100) / 10.0
+            self.dna.append(new_gene)
           
           # Copy DNA
-        dna.append(dna_gene)
+        self.dna.append(dna_gene)
     else:
         maxAtracRepul = 3
         # DNA
@@ -49,7 +53,7 @@ class Vehicle:
         # 2: Radius to sense food
         # 3: Radius to sense poison
         
-        dna = [randFloat(-maxAtracRepul, maxAtracRepul), randFloat(-maxAtracRepul, maxAtracRepul), randFloat(5, 100), randFloat(5, 100)]
+        self.dna = [randFloat(-maxAtracRepul, maxAtracRepul), randFloat(-maxAtracRepul, maxAtracRepul), randFloat(5, 100), randFloat(5, 100)]
     
 
   # Method to update location
@@ -65,9 +69,11 @@ class Vehicle:
     # Slowly die unless you eat
     self.health -= 0.002
 
+    self.alive_tick += 1
+
   # Return true if health is less than zero
   def dead(self):
-    return (self.health < 0)
+    return (self.health <= 0)
 
   # Small chance of returning a new child vehicle
   def birth(self): 
@@ -76,31 +82,34 @@ class Vehicle:
 
     if (rnd < 0.001):
       # Same location, same DNA
-      return Vehicle(self.position[0], self.position[1], self.dna)
+      return Vehicle((self.position[0], self.position[1]), self.dna)
     
     return None
   
   # Check against array of food or poison
   # index = 0 for food, index = 1 for poison
-  def eat(self, food_list, index):
+  def eat(self, food_list):
     # What's the closest?
     closest = None
     closestD = -1
+    food_gene_index = 0
 
     # Look at everything
-    for i in range(len(food_list), 0, -1):
-    
+    for i in range(len(food_list) - 1, 0, -1):
       # Calculate distance
       d = vec_dist(food_list[i].position, self.position)
 
+      if food_list[i].nutrition < 0:
+        food_gene_index = 1
+
       # If it's within perception radius and closer than pervious
-      if d < self.dna[2 + index] and d < closestD or closestD == -1:
+      if d < self.dna[2 + food_gene_index] and d < closestD or closestD == -1:
         closestD = d
         # Save it
         closest = food_list[i]
 
         # If we're withing 5 pixels, eat it!
-        if d < 5:
+        if d < 1.5 * self.r:
           # Add or subtract from health based on kind of food
           self.health += food_list[i].nutrition
           food_list.pop(i)
@@ -109,9 +118,9 @@ class Vehicle:
     # If something was close
     if closest != None:
       # Seek
-      seek = self.seek(closest, index)
+      seek = self.seek(closest.position)
       # Weight according to DNA
-      seek = vec_scalar_mult(seek, self.dna[index])
+      seek = vec_scalar_mult(seek, self.dna[food_gene_index])
       # Limit
       seek = clamp(seek, self.maxforce)
       self.applyForce(seek)
@@ -119,11 +128,11 @@ class Vehicle:
 
   # Add force to acceleration
   def applyForce(self, force):
-    vec_add(self.acceleration, force)
+    self.acceleration = vec_add(self.acceleration, force)
   
   # A method that calculates a steering force towards a target
   # STEER = DESIRED MINUS VELOCITY
-  def seek(self, target, index):
+  def seek(self, target):
     desired = vec_sub(target, self.position) # A vector pointing from the location to the target
     d = mag(desired)
 
@@ -139,17 +148,17 @@ class Vehicle:
     return steer
   
 
-
-  def display(self, DISPLAY): 
+  def draw(self, DISPLAY): 
     # Color based on health
     green = (0, 255, 0)
     red = (255, 0, 0)
     col = lerpColor(red, green, self.health, 0.0, 1.0)
 
-    # Draw a triangle rotated in the direction of velocity
-    theta = math.atan2(self.velocity[1], self.velocity[0]) + math.pi / 2
+    # Draw a circle rotated in the direction of velocity
+    theta = math.atan2(self.velocity[1], self.velocity[0])# + math.pi / 2
     heading_pos = (self.r * math.cos(theta), self.r * math.sin(theta))
-    #Push()
+    heading_pos = vec_add(heading_pos, self.position)
+
     pygame.draw.circle(DISPLAY, col, self.position, self.r)
     pygame.draw.line(DISPLAY, (255, 255, 255), self.position, heading_pos, 3)
   
@@ -157,7 +166,7 @@ class Vehicle:
   # A force to keep it on screen
   def boundaries(self, screen_w, screen_h):
     # tolerable distance
-    d = 10
+    d = self.r / 2
     desired = None
 
     if self.position[0] < d:
